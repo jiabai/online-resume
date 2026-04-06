@@ -280,7 +280,7 @@ function Hero() {
         <div className="flex-1">
           {/* Monogram */}
           <div className="mb-5 flex items-center gap-4">
-            <span className="monogram text-5xl md:text-6xl leading-none">B</span>
+            <span className="monogram text-5xl md:text-6xl leading-none">A</span>
             <Separator orientation="vertical" className="h-10" />
             <span className="text-sm font-mono tracking-widest text-[hsl(var(--muted-foreground))] uppercase">19+ Years in Tech</span>
           </div>
@@ -481,9 +481,6 @@ function App() {
                 <CardContent className="pt-5 pb-5">
                   <h3 className="font-heading text-lg font-semibold text-[hsl(var(--foreground))]">
                     {edu.school}
-                    {index === 0 && (
-                      <Badge variant="outline" className="ml-2 text-xs badge-top-edu">最高学历</Badge>
-                    )}
                   </h3>
                   <p className="text-[hsl(var(--accent))] font-medium mt-1 text-sm">{edu.degree}</p>
                   <p className="text-sm text-[hsl(var(--muted-foreground))] mt-0.5">{edu.major}</p>
