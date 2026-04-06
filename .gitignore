@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.deploy_temp/
+.DS_Store
+*.local
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
