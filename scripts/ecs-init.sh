@@ -69,8 +69,8 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
-    # 站点根目录
-    root /var/www/resume;
+    # 站点根目录 (指向构建产物目录 dist)
+    root /var/www/resume/dist;
     index index.html;
 
     # 日志

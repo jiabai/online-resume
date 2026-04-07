@@ -13,6 +13,29 @@ online-resume/
     └── deploy.js          # GitHub Pages 部署脚本（原有）
 ```
 
+## 部署架构（方式 A：服务器端构建）
+
+```
+本地源码 ──上传──▶ /var/www/resume (源码目录)
+                      │
+                   npm run build
+                      │
+                      ▼
+              /var/www/resume/dist  ← Nginx root 指向这里
+                      │
+                   Nginx 托管
+                      │
+                      ▼
+                 用户访问
+```
+
+**为什么选方式 A？**
+- 源码统一管理在服务器，方便远程直接修改和构建
+- 构建环境一致，避免本地/服务器 Node 版本差异
+- 只需 `ssh` 就能完成全流程，无需本地装 Node.js
+
+---
+
 ## 首次部署流程
 
 ### 第一步：ECS 服务器初始化（只需一次）
@@ -27,7 +50,8 @@ cat scripts/ecs-init.sh | ssh root@你的IP bash -s resume.yourdomain.com
 ```
 
 **初始化内容：**
-- 安装并配置 Nginx
+- 安装并配置 Nginx（root 指向 `/var/www/resume/dist`）
+- 安装 Node.js（用于服务端构建）
 - 创建站点目录 `/var/www/resume`
 - 开放防火墙端口 80/443
 - 生成优化的 Nginx 配置
@@ -42,6 +66,12 @@ chmod +x deploy-ecs.sh
 # Windows
 deploy-ecs.bat root@120.xx.xx.xx
 ```
+
+**脚本自动完成的步骤：**
+1. 上传源码到 `/var/www/resume`（排除 node_modules、dist、.git）
+2. 远程执行 `npm install && npm run build`
+3. 验证 `/var/www/resume/dist/index.html` 是否存在
+4. 重载 Nginx 使新构建生效
 
 **首次执行会提示输入服务器地址，之后保存在 `.ecs-deploy-config` 中**
 
@@ -64,7 +94,35 @@ cat scripts/ssl-setup.sh | ssh root@你的IP bash -s resume.yourdomain.com
 deploy-ecs.bat           # Windows
 ```
 
-脚本会自动完成：构建 → 上传 → 同步 → 验证
+脚本会自动完成：**上传源码 → 服务器安装依赖 → 服务器构建 → 重载 Nginx → 验证结果**
+
+### 仅重新构建（不更新源码）
+
+如果只是想清理缓存重新 build，可以直接 SSH 到服务器执行：
+
+```bash
+ssh root@你的IP 'cd /var/www/resume && rm -rf dist && npm run build'
+```
+
+---
+
+## 目录结构说明
+
+```
+/var/www/resume/          ← 源码目录（从本地同步）
+├── src/
+├── public/
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+├── node_modules/         ← 服务端安装的依赖
+└── dist/                 ← 构建产物（Nginx 直接托管这个目录）
+    ├── index.html
+    ├── assets/
+    └── ...
+```
+
+Nginx 配置中的 `root /var/www/resume/dist;` 确保用户请求的是构建产物而非源码。
 
 ---
 
@@ -101,10 +159,16 @@ deploy-ecs.bat           # Windows
 
 ### 403 Forbidden
 ```bash
-# 检查目录权限
-ssh root@你的IP "ls -la /var/www/resume/"
-ssh root@你的IP "chown -R nginx:nginx /var/www/resume/"  # CentOS
-ssh root@你的IP "chown -R www-data:www-data /var/www/resume/"  # Ubuntu
+# 检查 dist 目录权限
+ssh root@你的IP "ls -la /var/www/resume/dist/"
+ssh root@你的IP "chown -R nginx:nginx /var/www/resume/dist"   # CentOS
+ssh root@你的IP "chown -R www-data:www-data /var/www/resume/dist"  # Ubuntu
+```
+
+### 页面显示旧版本（缓存问题）
+```bash
+# 清除浏览器缓存后刷新 (Ctrl+Shift+R)
+# 或检查 Nginx 缓存配置是否生效
 ```
 
 ### Nginx 启动失败
@@ -115,6 +179,19 @@ ssh root@你的IP "tail -50 /var/log/nginx/error.log"
 # 检查配置语法
 ssh root@你的IP "nginx -t"
 
+# 检查 dist 目录是否存在
+ssh root@你的IP "ls -la /var/www/resume/dist/"
+
 # 重启服务
 ssh root@你的IP "systemctl restart nginx"
+```
+
+### 远程构建失败
+```bash
+# SSH 到服务器手动调试
+ssh root@你的IP
+cd /var/www/resume
+npm install   # 单独检查依赖安装
+npm run build # 查看具体报错信息
+node -v       # 确认 Node 版本 >= 18
 ```
